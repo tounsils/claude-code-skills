@@ -48,19 +48,53 @@ Do not put a "When to use this skill" section in the body. By then the decision 
 - Comments in example code say why the code exists. Git holds what changed.
 - Every skill's report section names what it did not do.
 
+## Generated files
+
+Five harness files are generated from `skills/`, so do not hand-edit them:
+
+- `AGENTS.md`
+- `.cursor/rules/*.mdc`
+- `.clinerules/dev-skills.md`
+- `.windsurf/rules/dev-skills.md`
+- `.github/copilot-instructions.md`
+
+After changing any skill's name or description, regenerate and commit the result:
+
+```bash
+node scripts/generate-harnesses.mjs
+```
+
+To change what those files say, edit `scripts/generate-harnesses.mjs`. CI runs `--check` and fails on drift.
+
 ## Validate
 
 ```bash
-node scripts/validate.mjs     # spec, cited files, local paths, secret shapes
-claude plugin validate .      # the authoritative plugin and marketplace check
-npm run format:check          # JSON, YAML and JS only; Markdown is left alone
+node scripts/validate.mjs                      # spec, cited files, versions, leaks
+node scripts/generate-harnesses.mjs --check    # generated files current
+claude plugin validate . --strict              # authoritative manifest check
+npm run format:check                           # JSON, YAML and JS only
 ```
 
-All three run in CI on every push. The first needs nothing installed.
+All four run in CI on every push. The first two need nothing installed.
+
+## Add an eval case
+
+A new skill needs one. A skill with no eval is a claim with no evidence, and the first thing that breaks when a model changes is triggering.
+
+```bash
+claude plugin eval init --bare my-case
+claude plugin eval . --case my-case --ablation none --runs 1
+```
+
+Two graders: a `tool_used` check that your skill fired, and an `llm` rubric on whether the answer was right. See [evals/README.md](evals/README.md) for the layout and the cheap iteration commands.
+
+Write the prompt the way a user would type it, and never name the skill in it. Then make the rubric adversarial: plant the specific thing your skill is written to catch, and write the FAIL conditions so that the answer a capable model gives without your skill does not pass. A case that passes on general competence proves nothing about the skill.
+
+Consider a negative case too, if your skill's description shares vocabulary with an existing one.
 
 ## Test it on real work
 
-A skill that validates is not a skill that works. Before opening a PR, run it against an actual task in a real repository, twice: once where it should fire and once where a neighboring skill should fire instead. A description that pulls a skill into the wrong task is worse than one that occasionally misses.
+A skill that validates and evals clean is still not a skill that works. Before opening a PR, run it against an actual task in a real repository, twice: once where it should fire and once where a neighboring skill should fire instead.
 
 Say in the PR body what you ran it on and what it got wrong. The second part is what tells a reviewer the skill was used rather than written.
 

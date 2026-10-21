@@ -268,6 +268,210 @@ function validateManifests(slugs) {
   }
 }
 
+/**
+ * Four files carry the version, and a release tagged from a VERSION that disagrees
+ * with plugin.json pins users to the wrong one silently. Treat any disagreement as
+ * an error rather than letting the release workflow discover it.
+ */
+function validateVersions() {
+  const sources = [
+    ['VERSION', (t) => t.trim()],
+    ['.claude-plugin/plugin.json', (t) => JSON.parse(t).version],
+    ['package.json', (t) => JSON.parse(t).version],
+  ];
+
+  const found = [];
+  for (const [rel, extract] of sources) {
+    const full = join(ROOT, rel);
+    if (!existsSync(full)) continue;
+    try {
+      const value = extract(readFileSync(full, 'utf8'));
+      if (value) found.push([rel, value]);
+      else warn(rel, 'declares no version');
+    } catch (e) {
+      err(rel, `could not read a version from it: ${e.message}`);
+    }
+  }
+
+  const distinct = new Set(found.map(([, v]) => v));
+  if (distinct.size > 1) {
+    err('version', `disagreement across files: ${found.map(([r, v]) => `${r}=${v}`).join(', ')}`);
+  }
+
+  const changelog = join(ROOT, 'CHANGELOG.md');
+  const current = found[0]?.[1];
+  if (current && existsSync(changelog)) {
+    const text = readFileSync(changelog, 'utf8');
+    if (!text.includes(`[${current}]`)) {
+      warn('CHANGELOG.md', `has no entry for version ${current}`);
+    }
+  }
+}
+
+const PROMPT_FIELDS = new Set([
+  'schema_version',
+  'name',
+  'description',
+  'tags',
+  'plugins',
+  'runs',
+  'expected_outcome',
+  'model',
+  'max_turns',
+  'timeout_seconds',
+  'allowed_tools',
+  'append_system_prompt',
+  'env',
+]);
+
+// Grader options by type. An unknown key is an error in the eval loader, so catching
+// it here is cheaper than discovering it when a suite scores zero.
+const GRADER_OPTIONS = {
+  regex: ['pattern', 'flags', 'match', 'target'],
+  tool_used: ['tool', 'input_match', 'min', 'max'],
+  tool_order: ['before', 'after'],
+  file_exists: ['path', 'exists'],
+  llm: ['criteria', 'focus'],
+  baseline: ['baseline_file', 'criteria'],
+};
+const GRADER_COMMON = ['type', 'weight', 'arm'];
+
+/**
+ * Checks the eval suite's shape without running it. `claude plugin eval` is the
+ * authority on behavior, but it needs an account that has the command and it costs
+ * a model run per case, so a structural pass belongs in the free gate: a case with
+ * no grader fails to load, an unknown frontmatter key is an error, and a tool_used
+ * grader naming a renamed skill passes its own load and then never fires.
+ */
+function validateEvals(slugs) {
+  const evalsDir = join(ROOT, 'evals');
+  if (!existsSync(evalsDir)) return;
+
+  const cases = readdirSync(evalsDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && e.name !== 'results')
+    .map((e) => e.name)
+    .filter((name) => ['prompt.md', 'case.yaml'].some((f) => existsSync(join(evalsDir, name, f))));
+
+  if (cases.length === 0) {
+    warn('evals/', 'directory exists but holds no cases');
+    return;
+  }
+
+  const slugSet = new Set(slugs);
+  const covered = new Set();
+
+  for (const name of cases) {
+    const dir = join(evalsDir, name);
+    const where = `evals/${name}`;
+
+    const promptPath = join(dir, 'prompt.md');
+    if (existsSync(promptPath)) {
+      const parsed = parseFrontmatter(readFileSync(promptPath, 'utf8'));
+      if (!parsed) {
+        err(where, 'prompt.md has no frontmatter');
+      } else {
+        for (const key of Object.keys(parsed.data)) {
+          if (!PROMPT_FIELDS.has(key)) err(where, `prompt.md has unknown field "${key}"`);
+        }
+        const body = readFileSync(promptPath, 'utf8').split(/\r?\n/).slice(parsed.bodyStart);
+        if (!body.join('\n').trim()) err(where, 'prompt.md has no prompt body');
+      }
+    }
+
+    const gradersDir = join(dir, 'graders');
+    const graders = existsSync(gradersDir)
+      ? readdirSync(gradersDir).filter((f) => f.endsWith('.md'))
+      : [];
+    const yamlDeclaresGraders =
+      existsSync(join(dir, 'case.yaml')) &&
+      /^graders:/m.test(readFileSync(join(dir, 'case.yaml'), 'utf8'));
+
+    if (graders.length === 0 && !yamlDeclaresGraders) {
+      err(where, 'no graders, so the case fails to load');
+    }
+
+    for (const file of graders) {
+      const at = `${where}/graders/${file}`;
+      const parsed = parseFrontmatter(readFileSync(join(gradersDir, file), 'utf8'));
+      if (!parsed) {
+        err(at, 'no frontmatter');
+        continue;
+      }
+
+      const { data } = parsed;
+      const allowed = GRADER_OPTIONS[data.type];
+      if (!data.type) {
+        err(at, 'frontmatter is missing type');
+        continue;
+      }
+      if (!allowed) {
+        err(
+          at,
+          `unknown grader type "${data.type}". One of: ${Object.keys(GRADER_OPTIONS).join(', ')}`,
+        );
+        continue;
+      }
+      for (const key of Object.keys(data)) {
+        if (!allowed.includes(key) && !GRADER_COMMON.includes(key)) {
+          err(at, `key "${key}" is not valid for a ${data.type} grader`);
+        }
+      }
+
+      if (data.type === 'llm') {
+        const body = readFileSync(join(gradersDir, file), 'utf8')
+          .split(/\r?\n/)
+          .slice(parsed.bodyStart)
+          .join('\n');
+        if (!body.trim() && !data.criteria) err(at, 'llm grader has no rubric');
+      }
+
+      if (data.type === 'tool_used' && data.input_match) {
+        try {
+          new RegExp(data.input_match);
+        } catch (e) {
+          err(at, `input_match is not a valid regex: ${e.message}`);
+        }
+
+        // A grader asserting a skill fired is tied to that skill's directory name.
+        // Rename the skill and the grader still loads, still runs, and matches
+        // nothing forever. Require that it names at least one skill that exists.
+        const named = [...slugSet].filter((slug) => data.input_match.includes(slug));
+        if (data.tool === 'Skill' && named.length === 0) {
+          err(at, 'input_match names no skill in skills/, so it can never match');
+        }
+        for (const slug of named) covered.add(slug);
+      }
+    }
+  }
+
+  for (const slug of slugs) {
+    if (!covered.has(slug)) warn('evals/', `no case asserts that ${slug} fires`);
+  }
+}
+
+/** The generated harness files ship too, so they get the same leak scan as the skills. */
+function scanShippedDocs() {
+  const docs = [
+    'README.md',
+    'CONTRIBUTING.md',
+    'AGENTS.md',
+    'CHANGELOG.md',
+    '.github/copilot-instructions.md',
+    '.clinerules/dev-skills.md',
+    '.windsurf/rules/dev-skills.md',
+  ];
+  for (const rel of docs) {
+    const full = join(ROOT, rel);
+    if (existsSync(full)) scanForLeaks(rel, readFileSync(full, 'utf8'));
+  }
+
+  const cursorDir = join(ROOT, '.cursor', 'rules');
+  if (!existsSync(cursorDir)) return;
+  for (const file of readdirSync(cursorDir)) {
+    scanForLeaks(`.cursor/rules/${file}`, readFileSync(join(cursorDir, file), 'utf8'));
+  }
+}
+
 if (!existsSync(SKILLS_DIR) || !statSync(SKILLS_DIR).isDirectory()) {
   console.error('error: no skills/ directory at the repo root');
   process.exit(1);
@@ -285,6 +489,9 @@ if (slugs.length === 0) {
 
 for (const slug of slugs) validateSkill(slug);
 validateManifests(slugs);
+validateVersions();
+validateEvals(slugs);
+scanShippedDocs();
 
 if (!QUIET) {
   for (const w of warnings) console.log(`warn  ${w}`);

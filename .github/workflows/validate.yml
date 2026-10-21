@@ -24,6 +24,11 @@ jobs:
       - name: Validate skills
         run: node scripts/validate.mjs
 
+      # The rule files for other agent harnesses are generated from skills/. A skill
+      # edited without regenerating them leaves five files advertising the old text.
+      - name: Check generated harness files are current
+        run: node scripts/generate-harnesses.mjs --check
+
       - name: Install dev dependencies
         run: npm ci
 

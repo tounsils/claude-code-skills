@@ -8,3 +8,5 @@ Thumbs.db
 .claude/settings.local.json
 dist/
 coverage/
+evals/results/
+release-notes.md

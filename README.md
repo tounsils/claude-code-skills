@@ -48,6 +48,44 @@ cp -r claude-code-skills/skills/review-diff ~/.claude/skills/
 | [`triage-ci`](skills/triage-ci/SKILL.md) | The build is red | Finds the first real failure instead of the last log line, classifies defect against flake against drift, and will not go green by disabling the check |
 | [`bump-deps`](skills/bump-deps/SKILL.md) | Dependencies have drifted | Risk-ordered batches with a commit per batch, changelogs read before editing, and never a major bump mixed with a refactor |
 
+## Other agents
+
+The skills are Markdown procedures, so they are not Claude-specific. Rule files for five other harnesses are generated from the same ten files:
+
+| Harness | File |
+| --- | --- |
+| The `AGENTS.md` convention | [AGENTS.md](AGENTS.md) |
+| Cursor | `.cursor/rules/<skill>.mdc`, one per skill |
+| Cline | `.clinerules/dev-skills.md` |
+| Windsurf | `.windsurf/rules/dev-skills.md` |
+| GitHub Copilot | `.github/copilot-instructions.md` |
+
+They index the skills and point at `skills/<name>/SKILL.md` rather than inlining it, because every one of these agents can read workspace files and four copies of two thousand lines would disagree with each other inside a week.
+
+Regenerate after changing any skill:
+
+```bash
+node scripts/generate-harnesses.mjs
+```
+
+CI runs `--check` and fails if a generated file has drifted. Do not hand-edit them.
+
+## Does it work
+
+There is an eval suite, which is the part most skills repositories leave out.
+
+```bash
+claude plugin eval .
+```
+
+Thirteen cases. Ten check that a skill fires on a realistic request and produces what the skill exists to produce. Three check that nothing fires on a request that only sounds adjacent, since a description that over-triggers costs more than one that occasionally misses.
+
+The positive cases are adversarial: each one plants the specific defect its skill is written to catch and surrounds it with easier things to comment on. The diff in `review-diff-finds-deleted-guard` deletes a null guard and adds a cosmetic `.trim()`, and the rubric fails any answer that only mentions the `.trim()`. `root-cause-refuses-timeout-bump` has the user explicitly asking for the symptom fix, and the rubric fails the answer that gives it to them.
+
+Each case is graded twice: a `tool_used` check on whether the skill fired, and an `llm` rubric on whether the answer was right. Either alone is misleading, because a skill can fire and still give a bad answer. Every case also runs without the plugin, so the report shows what the skills contribute rather than what the model would have done anyway.
+
+See [evals/README.md](evals/README.md) for the cheap iteration commands and how to add a case.
+
 ## How they are written
 
 A skill is one `SKILL.md`: a description that decides when it loads, and a body that is loaded only once it does. Some ship reference files that get read on demand, so the main file stays short.
@@ -66,14 +104,18 @@ Four rules shaped all ten.
 
 A new skill needs to earn its place in the context window. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Validation runs on every push and locally with no install step:
+Validation runs on every push, and locally the first command needs nothing installed:
 
 ```bash
-node scripts/validate.mjs
-claude plugin validate .
+node scripts/validate.mjs                      # spec, cited files, versions, leaks
+node scripts/generate-harnesses.mjs --check    # generated rule files are current
+claude plugin validate . --strict              # the authoritative manifest check
+npm run format:check                           # JSON, YAML and JS only
 ```
 
-The validator checks the spec (frontmatter keys, name matching its folder, cited files actually shipped, body length) and two rules the spec leaves alone: no machine-local paths and no credential shapes in anything that ships.
+The validator checks the spec (frontmatter keys, name matching its folder, cited files actually shipped, body length), that `VERSION`, `plugin.json` and `package.json` agree, and two rules the spec leaves alone: no machine-local paths and no credential shapes in anything that ships.
+
+Releases are tagged. See [CHANGELOG.md](CHANGELOG.md). A tag that disagrees with `VERSION` fails the release workflow rather than pinning installers to a version that is not in the tree.
 
 ## License
 

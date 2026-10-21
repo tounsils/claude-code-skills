@@ -1,0 +1,61 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+
+      # A tag that disagrees with VERSION pins installers to a version that does
+      # not exist in the tree. Fail here rather than shipping the mismatch.
+      - name: Check the tag matches VERSION
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          file="$(tr -d '[:space:]' < VERSION)"
+          if [ "$tag" != "$file" ]; then
+            echo "tag $GITHUB_REF_NAME does not match VERSION ($file)" >&2
+            exit 1
+          fi
+          echo "version=$file" >> "$GITHUB_OUTPUT"
+        id: version
+
+      # validate.mjs already fails when VERSION, plugin.json and package.json
+      # disagree, so this covers the other two files for free.
+      - name: Validate
+        run: |
+          node scripts/validate.mjs
+          node scripts/generate-harnesses.mjs --check
+          npm install -g @anthropic-ai/claude-code
+          claude plugin validate . --strict
+
+      - name: Extract the changelog section
+        run: |
+          awk -v v="${{ steps.version.outputs.version }}" '
+            $0 ~ "^## \\[" v "\\]" { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "CHANGELOG.md has no section for ${{ steps.version.outputs.version }}" >&2
+            exit 1
+          fi
+          cat release-notes.md
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file release-notes.md \
+            --verify-tag
