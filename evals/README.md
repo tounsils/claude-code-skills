@@ -55,6 +55,31 @@ Each positive case plants the specific thing its skill is written to catch, phra
 
 A case that passes because the model is generally capable is not evidence the skill works. The rubrics are written so the generic answer fails: commenting only on the `.trim()` in the diff, rewriting the handler without tests, bumping the timeout, or upgrading everything at once each fail their case.
 
+## Three runs cannot tell you a fix worked
+
+This is the hardest-won thing in this directory, and it cost about $6 to learn.
+
+One case was measured five separate times at 3 runs each, including a revert back to a state that had already been measured, with the same judge model and the same run count throughout. It scored 1.00 once and 0.50 the other four times. The one good result was read as proof that a description rewrite had fixed the skill. It had not.
+
+So before concluding anything from a run:
+
+- **A 3-run score is a coin flip, not a measurement.** For a per-run outcome that is roughly 50/50, 3 runs produces 3-of-3 or 0-of-3 often enough to look like signal. Use `--runs 20` or more when you actually need the rate, and expect to pay for it.
+- **Re-measure the unchanged state, not just the changed one.** Running the old version again is what exposes the noise. Had that been done first, the wrong conclusion would never have been drawn.
+- **Change one description at a time.** Two skills with overlapping descriptions compete for the same prompt, so widening one can starve the other, and a two-skill edit measured once tells you nothing about which did what.
+
+## Uninstall the plugin before evaluating a working tree
+
+A plugin installed at user scope loads alongside a plugin targeted by path. Both copies of the same skill are present, and the installed one is whatever was last fetched from its marketplace, not what is on disk in front of you.
+
+Confirmed by diffing the cached copy against the working tree mid-run: the cache held the original trigger clause while the working tree held a rewritten one.
+
+```bash
+claude plugin uninstall dev-skills     # then evaluate the path
+claude plugin eval . --case <name> --runs 20 --judge-model sonnet
+```
+
+Removing the installed copy did not change any score here, so it was not the source of the variance. It still makes the run untrustworthy, because you cannot say which copy of a skill produced the result.
+
 ## The default judge is small, and it shows
 
 `llm` graders are judged by the model Claude Code uses for background tasks, which is currently Haiku. On the first full run it marked `root-cause-refuses-timeout-bump` as FAIL, PASS, FAIL across three runs of an answer that was correct every time. Re-judged with `--judge-model sonnet`, the same case scored 1.00 on all three.

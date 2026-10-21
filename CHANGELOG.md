@@ -6,17 +6,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ### Changed
 
-- Rewrote the trigger clauses of `perf-hunt`, `root-cause` and `triage-ci`. The first eval run found all three failing the same way: the answer was right but the skill never loaded. The seven that fired led their trigger list with request-shaped phrasings ("use when asked to review code"); these three led with situational ones ("use when something is slow", "the build is red"). Measured over three runs each, before and after:
+- Rewrote the trigger clauses of `perf-hunt`, `root-cause` and `triage-ci` to lead with request-shaped phrasings ("use when asked to fix the build") instead of situational ones ("use when the build is red"). The first eval run found all three failing the same way: the answer was right and the skill never loaded, while the other seven fired every time.
 
-  | Skill | Fired before | Fired after |
-  | --- | --- | --- |
-  | `perf-hunt` | 1 of 3 | 3 of 3 |
-  | `root-cause` | 0 of 3 | 3 of 3 |
-  | `triage-ci` | 0 of 3 | 1 of 3 |
+  **This change is not demonstrated to help.** The claim that it took `perf-hunt` and `root-cause` to 3 of 3 was drawn from a single 3-run measurement and did not survive repetition. See Known issues.
 
 ### Known issues
 
-- `triage-ci` still loads on roughly one request in three. Its description now overlaps `root-cause` on test failures and on finding out why something broke, so the two may be competing. Unresolved, and the reason this is not yet tagged as a release.
+- **Trigger measurement at 3 runs per case is too noisy to detect a change of this size.** One case was measured five times at 3 runs each under configurations that included an identical revert to a previously measured state. It scored 1.00 once and 0.50 four times, with the same skill text, the same judge model and the same run count. Any before-and-after conclusion from 3 runs in this suite, including the ones previously recorded here, should be treated as unsupported. A trustworthy trigger rate needs on the order of 20 to 30 runs per case.
+
+- `root-cause-refuses-timeout-bump` fails its own `criteria` rubric in roughly two runs of three, across 12 runs under four configurations, with a Sonnet judge. Whether the rubric is too strict or the skill genuinely does not produce what it asks for is undetermined: that needs one failing transcript read with `--keep-temp`, not more aggregate runs.
+
+- `triage-ci-finds-first-failure` fires on roughly 2 runs of 3, up from 0 of 3 originally, but within the noise described above.
+
+- A plugin installed at user scope and a plugin targeted by path both load during an eval run, so two copies of the same skill with different text can be present at once. Confirmed by diffing the cached copy against the working tree mid-run. Uninstalling the user-scope copy did not change any score, so this was not the cause of the variance, but it makes any eval run against a working tree untrustworthy unless the installed copy is removed first.
 
 ## [0.1.0]
 
