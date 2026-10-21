@@ -18,6 +18,12 @@ Or from inside a session:
 /plugin install dev-skills@tounsils-skills
 ```
 
+The `owner/repo` shorthand can resolve to SSH depending on your git configuration. Without SSH keys for GitHub, pass the HTTPS URL instead:
+
+```bash
+claude plugin marketplace add https://github.com/tounsils/claude-code-skills.git
+```
+
 Confirm it loaded:
 
 ```bash
