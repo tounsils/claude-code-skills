@@ -1,0 +1,24 @@
+{
+  "name": "dev-skills",
+  "displayName": "Dev Skills",
+  "version": "0.1.0",
+  "description": "Ten engineering skills: diff review, restructuring, PRs, test gaps, root-cause debugging, security audit, repo onboarding, performance, CI triage, dependency upgrades",
+  "author": {
+    "name": "Ilyes Tounsi",
+    "url": "https://github.com/tounsils"
+  },
+  "homepage": "https://github.com/tounsils/claude-code-skills",
+  "repository": "https://github.com/tounsils/claude-code-skills",
+  "license": "MIT",
+  "keywords": [
+    "code-review",
+    "refactoring",
+    "testing",
+    "debugging",
+    "security",
+    "performance",
+    "ci",
+    "dependencies",
+    "agent-skills"
+  ]
+}

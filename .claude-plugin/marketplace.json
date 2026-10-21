@@ -1,0 +1,15 @@
+{
+  "name": "tounsils-skills",
+  "description": "Ten engineering skills for Claude Code: review, restructure, PRs, tests, debugging, security, onboarding, performance, CI, dependencies",
+  "owner": {
+    "name": "Ilyes Tounsi",
+    "url": "https://github.com/tounsils"
+  },
+  "plugins": [
+    {
+      "name": "dev-skills",
+      "source": "./",
+      "description": "Ten skills covering the work that happens between writing code and shipping it"
+    }
+  ]
+}

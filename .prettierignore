@@ -1,0 +1,5 @@
+# Prose is hand-formatted: one line per paragraph, no hard wrapping.
+# Letting a formatter near the skills risks rewriting frontmatter and tables.
+*.md
+LICENSE
+node_modules/

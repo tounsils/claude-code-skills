@@ -1,0 +1,46 @@
+name: validate
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  skills:
+    runs-on: ubuntu-latest
+    steps:
+      # Actions are pinned to a commit sha, not a tag. A mutable tag is a
+      # dependency that upgrades itself without appearing in a commit.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+
+      # Runs with nothing installed, so a broken manifest fails before npm does.
+      - name: Validate skills
+        run: node scripts/validate.mjs
+
+      - name: Install dev dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npm run format:check
+
+  plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+
+      # The authoritative check for marketplace.json and plugin.json. It reads
+      # local files only and needs no credentials. --strict fails on warnings.
+      - name: Validate plugin manifests
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          claude plugin validate . --strict

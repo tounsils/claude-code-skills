@@ -1,0 +1,11 @@
+{
+  "printWidth": 100,
+  "singleQuote": true,
+  "proseWrap": "preserve",
+  "overrides": [
+    {
+      "files": ["*.json", "*.yml", "*.yaml"],
+      "options": { "singleQuote": false }
+    }
+  ]
+}
