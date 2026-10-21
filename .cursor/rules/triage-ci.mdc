@@ -1,5 +1,5 @@
 ---
-description: Diagnose a failing CI run by finding the first real failure rather than the last log line, classifying it as defect, flake, infrastructure, or config drift, and fixing the cause without disabling the check. Use when the build is red, a pipeline fails, a GitHub Actions run breaks, tests pass locally but fail in CI, or when asked why is CI failing, fix the build, or look at this failed run.
+description: Diagnose a failing CI run by finding the first real failure rather than the last log line, classifying it as defect, flake, infrastructure, or config drift, and fixing the cause without disabling the check. Use when asked to fix the build, fix CI, find out why CI is failing, look at a failing run, or work out what is actually wrong with a red build, and when a pipeline or GitHub Actions run fails, a CI log needs reading, or tests pass locally but fail only in CI.
 globs:
 alwaysApply: false
 ---

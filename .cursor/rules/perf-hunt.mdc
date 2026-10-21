@@ -1,5 +1,5 @@
 ---
-description: Find and fix the actual performance bottleneck by measuring first, attacking the dominant cost, and re-measuring, with every constant derived from a number rather than guessed. Use when something is slow, a page or query or build takes too long, memory grows without bound, or when asked to optimize this, make it faster, profile this, or reduce latency.
+description: Find and fix the real performance bottleneck by measuring first, attacking the dominant cost, then re-measuring, with every constant derived from a number rather than guessed. Use when asked to make this faster, speed this up, optimize this, profile this, reduce latency, or fix something slow, and when an endpoint, query, page, build, or test run takes too long or memory grows without bound.
 globs:
 alwaysApply: false
 ---

@@ -55,6 +55,18 @@ Each positive case plants the specific thing its skill is written to catch, phra
 
 A case that passes because the model is generally capable is not evidence the skill works. The rubrics are written so the generic answer fails: commenting only on the `.trim()` in the diff, rewriting the handler without tests, bumping the timeout, or upgrading everything at once each fail their case.
 
+## The default judge is small, and it shows
+
+`llm` graders are judged by the model Claude Code uses for background tasks, which is currently Haiku. On the first full run it marked `root-cause-refuses-timeout-bump` as FAIL, PASS, FAIL across three runs of an answer that was correct every time. Re-judged with `--judge-model sonnet`, the same case scored 1.00 on all three.
+
+So when a `criteria` grader disagrees with itself across runs of one case, suspect the judge before the skill:
+
+```bash
+claude plugin eval . --case <name> --judge-model sonnet --runs 3
+```
+
+A `tool_used` grader is computed from the transcript and costs nothing, so it never has this problem. That asymmetry is the reason every case here pairs one of each: when the two disagree, the free one is the trustworthy signal about whether the plugin did the work.
+
 ## Adding a case
 
 ```bash

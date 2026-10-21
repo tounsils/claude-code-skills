@@ -1,5 +1,5 @@
 ---
-description: Debug by reproducing first, isolating the mechanism, then fixing the cause rather than the symptom, and keeping the reproduction as a regression test. Use when something is broken, a test fails intermittently, behavior differs between environments, or when asked to debug this, find out why, fix this bug, or investigate a failure.
+description: Debug by reproducing first, isolating the mechanism, then fixing the cause rather than the symptom, and keeping the reproduction as a regression test. Use when asked to debug this, fix this bug, find out why something happens, investigate a failure, or work out what is going wrong, and when a test fails intermittently or flakily, behavior differs between environments, or someone proposes raising a timeout, adding a retry, or skipping a test to make a problem go away.
 globs:
 alwaysApply: false
 ---

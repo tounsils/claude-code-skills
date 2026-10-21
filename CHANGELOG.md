@@ -4,6 +4,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+### Changed
+
+- Rewrote the trigger clauses of `perf-hunt`, `root-cause` and `triage-ci`. The first eval run found all three failing the same way: the answer was right but the skill never loaded. The seven that fired led their trigger list with request-shaped phrasings ("use when asked to review code"); these three led with situational ones ("use when something is slow", "the build is red"). Measured over three runs each, before and after:
+
+  | Skill | Fired before | Fired after |
+  | --- | --- | --- |
+  | `perf-hunt` | 1 of 3 | 3 of 3 |
+  | `root-cause` | 0 of 3 | 3 of 3 |
+  | `triage-ci` | 0 of 3 | 1 of 3 |
+
+### Known issues
+
+- `triage-ci` still loads on roughly one request in three. Its description now overlaps `root-cause` on test failures and on finding out why something broke, so the two may be competing. Unresolved, and the reason this is not yet tagged as a release.
+
 ## [0.1.0]
 
 First release. Ten skills, a plugin marketplace, generated rule files for five other agent harnesses, and an eval suite.

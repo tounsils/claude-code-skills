@@ -28,7 +28,7 @@ Map an unfamiliar codebase into an architecture document and a handoff note: rea
 
 Read `skills/perf-hunt/SKILL.md`.
 
-Find and fix the actual performance bottleneck by measuring first, attacking the dominant cost, and re-measuring, with every constant derived from a number rather than guessed. Use when something is slow, a page or query or build takes too long, memory grows without bound, or when asked to optimize this, make it faster, profile this, or reduce latency.
+Find and fix the real performance bottleneck by measuring first, attacking the dominant cost, then re-measuring, with every constant derived from a number rather than guessed. Use when asked to make this faster, speed this up, optimize this, profile this, reduce latency, or fix something slow, and when an endpoint, query, page, build, or test run takes too long or memory grows without bound.
 
 ## restructure
 
@@ -46,7 +46,7 @@ Review uncommitted or branch-local changes for defects, ranked by severity, with
 
 Read `skills/root-cause/SKILL.md`.
 
-Debug by reproducing first, isolating the mechanism, then fixing the cause rather than the symptom, and keeping the reproduction as a regression test. Use when something is broken, a test fails intermittently, behavior differs between environments, or when asked to debug this, find out why, fix this bug, or investigate a failure.
+Debug by reproducing first, isolating the mechanism, then fixing the cause rather than the symptom, and keeping the reproduction as a regression test. Use when asked to debug this, fix this bug, find out why something happens, investigate a failure, or work out what is going wrong, and when a test fails intermittently or flakily, behavior differs between environments, or someone proposes raising a timeout, adding a retry, or skipping a test to make a problem go away.
 
 ## ship-pr
 
@@ -64,7 +64,7 @@ Find the untested branches that matter, write tests that can actually fail, and 
 
 Read `skills/triage-ci/SKILL.md`.
 
-Diagnose a failing CI run by finding the first real failure rather than the last log line, classifying it as defect, flake, infrastructure, or config drift, and fixing the cause without disabling the check. Use when the build is red, a pipeline fails, a GitHub Actions run breaks, tests pass locally but fail in CI, or when asked why is CI failing, fix the build, or look at this failed run.
+Diagnose a failing CI run by finding the first real failure rather than the last log line, classifying it as defect, flake, infrastructure, or config drift, and fixing the cause without disabling the check. Use when asked to fix the build, fix CI, find out why CI is failing, look at a failing run, or work out what is actually wrong with a red build, and when a pipeline or GitHub Actions run fails, a CI log needs reading, or tests pass locally but fail only in CI.
 
 ## Applies to all of them
 
